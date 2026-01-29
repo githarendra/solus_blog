@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Solus</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <script>
+        if (localStorage.getItem("theme") === "dark") document.documentElement.classList.add("dark-mode");
+    </script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav id="navbar"></nav>
+    <div class="container" style="max-width: 400px;">
+        <div class="card">
+            <h2 id="form-title">Login</h2>
+            <form id="auth-form">
+                <div id="username-field" style="display: none;">
+                    <input type="text" id="username" placeholder="Username">
+                </div>
+                <input type="email" id="email" placeholder="Email" required>
+                <input type="password" id="password" placeholder="Password" required>
+                
+                <button type="submit" class="btn" style="width: 100%">Submit</button>
+            </form>
+            <p style="margin-top: 1rem; text-align: center;">
+                <a href="#" id="toggle-mode" style="color: var(--primary)">Need an account? Register</a>
+            </p>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script>
+        // Check if already logged in
+        if (localStorage.getItem("token")) window.location.href = "index.html";
+
+        let isLogin = true;
+        
+        document.getElementById("toggle-mode").onclick = (e) => {
+            e.preventDefault();
+            isLogin = !isLogin;
+            document.getElementById("form-title").innerText = isLogin ? "Login" : "Register";
+            document.getElementById("username-field").style.display = isLogin ? "none" : "block";
+            e.target.innerText = isLogin ? "Need an account? Register" : "Have an account? Login";
+        };
+
+        document.getElementById("auth-form").onsubmit = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            
+            try {
+                let data;
+                if (isLogin) {
+                    data = await API.login(email, password);
+                } else {
+                    const username = document.getElementById("username").value;
+                    await API.register(username, email, password);
+                    data = await API.login(email, password); 
+                }
+
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("user", JSON.stringify(data.user));
+                window.location.href = "index.html";
+            } catch (err) {
+                alert(err.message);
+            }
+        };
+    </script>
+</body>
+</html>

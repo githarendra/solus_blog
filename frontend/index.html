@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Solus</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <script>
+        if (localStorage.getItem("theme") === "dark") {
+            document.documentElement.classList.add("dark-mode");
+        }
+    </script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav id="navbar"></nav>
+    <div class="container">
+        <h1>Latest Stories</h1>
+        <div id="blog-list">Loading...</div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script>
+        async function loadBlogs() {
+            try {
+                const data = await API.request("/blogs/all");
+                const list = document.getElementById("blog-list");
+                
+                if(!data.blogs.length) {
+                    list.innerHTML = "<p>No posts found.</p>";
+                    return;
+                }
+
+                list.innerHTML = data.blogs.map(blog => `
+                    <div class="card">
+                        <h2><a href="post.html?id=${blog._id}" style="text-decoration: none; color: inherit;">${blog.title}</a></h2>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">By ${blog.author?.username || 'Unknown'} • ${formatDate(blog.createdAt)}</p>
+                        <p>${blog.content.substring(0, 150)}...</p>
+                        <a href="post.html?id=${blog._id}" style="color: var(--primary); font-weight: bold;">Read more</a>
+                    </div>
+                `).join("");
+            } catch (err) {
+                document.getElementById("blog-list").innerText = "Error loading blogs.";
+            }
+        }
+        loadBlogs();
+    </script>
+</body>
+</html>

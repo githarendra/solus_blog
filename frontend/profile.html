@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Profile - Solus</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <script>
+        if (localStorage.getItem("theme") === "dark") document.documentElement.classList.add("dark-mode");
+    </script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav id="navbar"></nav>
+    <div class="container">
+        <div class="card" style="text-align: center;">
+            <div style="width: 80px; height: 80px; background: var(--border); border-radius: 50%; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
+                👤
+            </div>
+            <h2 id="username">Loading...</h2>
+            <p id="email" style="color: var(--text-muted);">...</p>
+        </div>
+
+        <h3 style="margin-top: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">My Blogs</h3>
+        <div id="my-blogs-list">
+            <p style="color: var(--text-muted);">Loading...</p>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script>
+        async function initProfile() {
+            const token = localStorage.getItem("token");
+            if (!token) { window.location.href = "login.html"; return; }
+
+            const localUser = JSON.parse(localStorage.getItem("user"));
+            if (localUser) {
+                document.getElementById("username").innerText = localUser.username;
+                document.getElementById("email").innerText = localUser.email;
+            }
+
+            try {
+                const data = await API.request("/blogs/user/me");
+                const list = document.getElementById("my-blogs-list");
+
+                if (data.blogs.length === 0) {
+                    list.innerHTML = `<p>No blogs yet. <a href="editor.html" style="color: var(--primary)">Write one!</a></p>`;
+                    return;
+                }
+
+                list.innerHTML = data.blogs.map(blog => `
+                    <div class="card">
+                        <h3><a href="post.html?id=${blog._id}" style="text-decoration: none; color: inherit;">${blog.title}</a></h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">${formatDate(blog.createdAt)}</p>
+                        <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                            <a href="editor.html?id=${blog._id}" class="btn" style="background-color: #f59e0b; text-decoration: none;">Edit</a>
+                            <button onclick="deleteBlog('${blog._id}')" class="btn" style="background-color: #ef4444;">Delete</button>
+                        </div>
+                    </div>
+                `).join("");
+            } catch (error) {
+                if (error.message.includes("401")) logout(); 
+            }
+        }
+
+        async function deleteBlog(id) {
+            try {
+                await API.request(`/blogs/${id}`, "DELETE");
+                initProfile(); 
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+        initProfile();
+    </script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Story - Solus</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <script>
+        if (localStorage.getItem("theme") === "dark") document.documentElement.classList.add("dark-mode");
+    </script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav id="navbar"></nav>
+    <div class="container">
+        <div id="post-container">Loading...</div>
+        
+        <div class="card" style="margin-top: 2rem;">
+            <h3>Discussion</h3>
+            <form id="comment-form" style="margin-bottom: 2rem;">
+                <textarea id="comment-input" rows="3" placeholder="Add to the discussion..." required></textarea>
+                <button type="submit" class="btn" style="margin-top: 0.5rem;">Post Comment</button>
+            </form>
+            <div id="comments-list">Loading comments...</div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script>
+        const blogId = new URLSearchParams(window.location.search).get('id');
+        const user = JSON.parse(localStorage.getItem("user") || '{}');
+        const myId = user._id || user.id;
+
+        async function initPost() {
+            try {
+                const { blog } = await API.request(`/blogs/${blogId}`);
+                document.getElementById("post-container").innerHTML = `
+                    <div class="card">
+                        <h1 style="margin-bottom: 0.5rem;">${blog.title}</h1>
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">
+                            By <span style="color: var(--primary);">${blog.author?.username || 'Unknown'}</span> 
+                            • ${formatDate(blog.createdAt)}
+                        </p>
+                        <div style="line-height: 1.8; white-space: pre-wrap;">${blog.content}</div>
+                    </div>
+                `;
+                loadComments();
+            } catch (error) {
+                document.getElementById("post-container").innerHTML = "<p>Post not found.</p>";
+            }
+        }
+
+        async function loadComments() {
+            try {
+                const { comments } = await API.request(`/comments/blog/${blogId}`);
+                const list = document.getElementById("comments-list");
+                
+                if (!comments.length) { list.innerHTML = "<p style='color: var(--text-muted)'>No comments yet.</p>"; return; }
+
+                list.innerHTML = comments.map(c => `
+                    <div style="border-bottom: 1px solid var(--border); padding: 1rem 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                            <strong>${c.author?.username || 'Deleted User'}</strong>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">${formatDate(c.createdAt)}</span>
+                        </div>
+                        <div id="comment-content-${c._id}">
+                            <p style="margin: 0;">${c.content}</p>
+                        </div>
+                        ${(myId && c.author && myId === c.author._id) ? `
+                            <div style="margin-top: 0.5rem; font-size: 0.9rem;">
+                                <button onclick="enableEdit('${c._id}')" style="color: var(--text-muted); background:none; border:none; cursor:pointer; margin-right: 10px;">Edit</button>
+                                <button onclick="deleteComment('${c._id}')" style="color: #ef4444; background:none; border:none; cursor:pointer;">Delete</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join("");
+            } catch (e) { console.error(e); }
+        }
+
+        function enableEdit(id) {
+            const container = document.getElementById(`comment-content-${id}`);
+            const text = container.innerText;
+            container.innerHTML = `
+                <textarea id="edit-${id}" style="width:100%; margin:0.5rem 0;">${text}</textarea>
+                <button onclick="saveEdit('${id}')" class="btn">Save</button>
+                <button onclick="loadComments()" class="btn" style="background:var(--text-muted)">Cancel</button>
+            `;
+        }
+
+        async function saveEdit(id) {
+            const content = document.getElementById(`edit-${id}`).value;
+            await API.request(`/comments/${id}`, "PATCH", { content });
+            loadComments();
+        }
+
+        async function deleteComment(id) {
+            await API.request(`/comments/${id}`, "DELETE");
+            loadComments();
+        }
+
+        document.getElementById("comment-form").onsubmit = async (e) => {
+            e.preventDefault();
+            if(!localStorage.getItem("token")) return window.location.href = "login.html";
+            const input = document.getElementById("comment-input");
+            await API.request(`/comments/blog/${blogId}`, "POST", { content: input.value });
+            input.value = "";
+            loadComments();
+        }
+
+        initPost();
+    </script>
+</body>
+</html>
