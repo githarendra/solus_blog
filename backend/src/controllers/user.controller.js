@@ -37,44 +37,26 @@ const existing = await User.findOne({
 }
 
 const loginUser = async (req, res) => {
-    // 1. Prove the request actually hit the server
-    console.log("➡️ STEP 1: Login Request Received");
-
     try {
         const { email, password } = req.body;
-        console.log("➡️ STEP 2: Body parsed. Email:", email);
-
         if (!email || !password) {
-            console.log("➡️ STEP 3: Missing fields");
             return res.status(400).json({ message: "username or email is required" });
         }
-
         const user = await User.findOne({ email });
-        console.log("➡️ STEP 4: User found in DB?", user ? "YES" : "NO");
-
         if (!user) {
             return res.status(404).json({ message: "User does not exist" });
         }
-
-        // THIS IS THE DANGER ZONE (Password Compare)
-        console.log("➡️ STEP 5: About to compare password...");
         const isPasswordValid = await user.comparePassword(password);
-        console.log("➡️ STEP 6: Password compare finished. Result:", isPasswordValid);
 
         if (!isPasswordValid) {
             return res.status(401).json({ message: "Invalid user credentials" });
         }
-
-        // THIS IS THE SECOND DANGER ZONE (JWT Signing)
-        console.log("➡️ STEP 7: About to sign Token. Secret exists?", process.env.JWT_SECRET ? "YES" : "NO!!!");
         
         const accessToken = jwt.sign(
             { _id: user._id, email: user.email, username: user.username },
             process.env.JWT_SECRET,
             { expiresIn: "10d" }
         );
-
-        console.log("➡️ STEP 8: Token signed. Login Success.");
         
         return res.status(200).json({
             message: "User logged in",
