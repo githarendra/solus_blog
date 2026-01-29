@@ -36,38 +36,58 @@ const existing = await User.findOne({
     }
 }
 
-const loginUser = async (req,res) => {
-    try {
-        const {email,password} = req.body;
+const loginUser = async (req, res) => {
+    // 1. Prove the request actually hit the server
+    console.log("➡️ STEP 1: Login Request Received");
 
-        const user = await User.findOne({
-            email: email.toLowerCase()
-        })
-        if(!user){
-            return res.status(400).json({message: "User not found"})
-        };
-        const isMatch = await user.comparePassword(password);
-        if(!isMatch) return res.status(400).json({message: "Invalid credentials"});
+    try {
+        const { email, password } = req.body;
+        console.log("➡️ STEP 2: Body parsed. Email:", email);
+
+        if (!email || !password) {
+            console.log("➡️ STEP 3: Missing fields");
+            return res.status(400).json({ message: "username or email is required" });
+        }
+
+        const user = await User.findOne({ email });
+        console.log("➡️ STEP 4: User found in DB?", user ? "YES" : "NO");
+
+        if (!user) {
+            return res.status(404).json({ message: "User does not exist" });
+        }
+
+        // THIS IS THE DANGER ZONE (Password Compare)
+        console.log("➡️ STEP 5: About to compare password...");
+        const isPasswordValid = await user.comparePassword(password);
+        console.log("➡️ STEP 6: Password compare finished. Result:", isPasswordValid);
+
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: "Invalid user credentials" });
+        }
+
+        // THIS IS THE SECOND DANGER ZONE (JWT Signing)
+        console.log("➡️ STEP 7: About to sign Token. Secret exists?", process.env.JWT_SECRET ? "YES" : "NO!!!");
         
-        const token = jwt.sign(
-            {id: user._id},
+        const accessToken = jwt.sign(
+            { _id: user._id, email: user.email, username: user.username },
             process.env.JWT_SECRET,
-            {expiresIn: process.env.JWT_EXPIRES_IN}
+            { expiresIn: "10d" }
         );
 
-        res.status(200).json({
-            message: "Login successful",
-            token,
-            user:{
-                _id: user._id,
-                username: user.username,
-                email: user.email
-            }
-        })   
+        console.log("➡️ STEP 8: Token signed. Login Success.");
+        
+        return res.status(200).json({
+            message: "User logged in",
+            accessToken,
+            user
+        });
+
     } catch (error) {
-        res.status(500).json({message: "Internal Server Error"})
+        // Log the ACTUAL error
+        console.error("🔥 CRITICAL LOGIN ERROR:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
     }
-}
+};
 
 const logoutUser = async (req,res) => {
     try {
