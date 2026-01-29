@@ -41,3 +41,5 @@ export const verifyJWT = async (req, res, next) => {
         return res.status(401).json({ message: error?.message || "Invalid Access Token" });
     }
 };
+
+export default authMiddleware;
