@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/user.model.js";
 
 // RENAMED back to authMiddleware to match your routes
-export const authMiddleware = async (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
     try {
         // 1. Get the token
         const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
@@ -42,3 +42,4 @@ export const authMiddleware = async (req, res, next) => {
         return res.status(401).json({ message: error?.message || "Invalid Access Token" });
     }
 };
+export default authMiddleware;
